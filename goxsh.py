@@ -25,7 +25,7 @@ class MtGox(object):
         self.unset_credentials()
         self.__url_parts = urlparse.urlsplit("https://mtgox.com/code/")
         self.__headers = {
-            "User-Agent": "goxsh"
+            "User-Agent": u"goxsh"
         }
     
     def get_username(self):
@@ -36,9 +36,9 @@ class MtGox(object):
         
     def set_credentials(self, username, password):
         if len(username) == 0:
-            raise ValueError("Empty username.")
+            raise ValueError(u"Empty username.")
         if len(password) == 0:
-            raise ValueError("Empty password.")
+            raise ValueError(u"Empty password.")
         self.__credentials = (username, password)
 
     def unset_credentials(self):
@@ -55,7 +55,10 @@ class MtGox(object):
             raise NoCredentialsError()
         params = params.items()
         if auth:
-            params += [("name", self.__credentials[0]), ("pass", self.__credentials[1])]
+            params += [
+                (u"name", self.__credentials[0]),
+                (u"pass", self.__credentials[1])
+            ]
         post_data = urllib.urlencode(params) if len(params) > 0 else None
         url = urlparse.urlunsplit((
             self.__url_parts.scheme,
@@ -208,7 +211,7 @@ class GoxSh(object):
         print u"Hight:", ticker[u"high"]
         print u"Low:", ticker[u"low"]
         print u"Volume:", ticker[u"vol"]
-        
+    
 
 def main():
     locale.setlocale(locale.LC_ALL, "")
