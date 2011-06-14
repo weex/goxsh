@@ -44,9 +44,12 @@ class MtGox(object):
         self.__credentials = None
     
     def get_balance(self):
-        return self.__get_json("getFunds.php", {})
+        return self.__get_json("getFunds.php")
     
-    def __get_json(self, rel_path, params, auth = True):
+    def get_ticker(self):
+        return self.__get_json("data/ticker.php", auth = False)
+    
+    def __get_json(self, rel_path, params = {}, auth = True):
         if auth and not self.have_credentials():
             raise NoCredentialsError()
         params = params.items()
@@ -190,6 +193,17 @@ class GoxSh(object):
     def __cmd_logout__(self):
         u"""Unset login credentials."""
         self.__mtgox.unset_credentials()
+    
+    def __cmd_ticker__(self):
+        u"""Display ticker."""
+        ticker = self.__mtgox.get_ticker()
+        print u"Last:", ticker[u"last"]
+        print u"Buy:", ticker[u"buy"]
+        print u"Sell:", ticker[u"sell"]
+        print u"Hight:", ticker[u"high"]
+        print u"Low:", ticker[u"low"]
+        print u"Volume:", ticker[u"vol"]
+        
 
 def main():
     locale.setlocale(locale.LC_ALL, "")
