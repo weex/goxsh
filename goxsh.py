@@ -122,6 +122,8 @@ class GoxSh(object):
                         arity_text = u"%s-%s" % (min_arity, max_arity)
                     arg_text = u"argument" + (u"" if arity_text == u"1" else u"s")
                     raise ArityError(u"Expected %s %s, got %s" % (arity_text, arg_text, arg_count))
+        except MtGoxError, e:
+            print u"Mt. Gox error: %s" % e
         except EOFError, e:
             raise e
         except ArityError, e:
@@ -233,12 +235,12 @@ class GoxSh(object):
     def __cmd_ticker__(self):
         u"""Display ticker."""
         ticker = self.__mtgox.get_ticker()
-        print u"Last:", ticker[u"last"]
-        print u"Buy:", ticker[u"buy"]
-        print u"Sell:", ticker[u"sell"]
-        print u"Hight:", ticker[u"high"]
-        print u"Low:", ticker[u"low"]
-        print u"Volume:", ticker[u"vol"]
+        print u"Last: %s" % ticker[u"last"]
+        print u"Buy: %s" % ticker[u"buy"]
+        print u"Sell: %s" % ticker[u"sell"]
+        print u"Hight: %s" % ticker[u"high"]
+        print u"Low: %s" % ticker[u"low"]
+        print u"Volume: %s" % ticker[u"vol"]
 
     def __cmd_withdraw__(self, address, amount):
         u"""Withdraw bitcoins."""
