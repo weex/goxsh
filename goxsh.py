@@ -6,6 +6,7 @@ import json
 import locale
 import re
 import readline
+import traceback
 import urllib
 import urllib2
 import urlparse
@@ -47,7 +48,7 @@ class MtGox(object):
         return self.__get_json("getFunds.php")
     
     def get_ticker(self):
-        return self.__get_json("data/ticker.php", auth = False)
+        return self.__get_json("data/ticker.php", auth = False)[u"ticker"]
     
     def __get_json(self, rel_path, params = {}, auth = True):
         if auth and not self.have_credentials():
@@ -98,12 +99,16 @@ class GoxSh(object):
                 proc = self.__cmd_exit__
             if proc != None:
                 proc()
+        except EOFError, e:
+            raise e
         except NoCredentialsError:
             print u"No login credentials entered. Use the login command first."
         except LoginError:
             print u"Mt. Gox rejected the login credentials. Maybe you made a typo?"
         except KeyboardInterrupt:
             print
+        except Exception, e:
+            traceback.print_exc()
     
     def __get_cmd_proc(self, cmd, default = None):
         return getattr(self, "__cmd_%s__" % cmd, default)
