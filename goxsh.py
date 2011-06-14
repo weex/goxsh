@@ -242,7 +242,11 @@ class GoxSh(object):
 
     def __cmd_withdraw__(self, address, amount):
         u"""Withdraw bitcoins."""
-        print self.__mtgox.withdraw(address, amount)    
+        withdraw_info = self.__mtgox.withdraw(address, amount)
+        print withdraw_info[u"status"]
+        print "Updated balance:"
+        print "BTC: %s" % withdraw_info[u"btcs"]
+        print "USD: %s" % withdraw_info[u"usds"]
 
 def main():
     locale.setlocale(locale.LC_ALL, "")
