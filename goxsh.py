@@ -45,6 +45,12 @@ class MtGox(object):
     def unset_credentials(self):
         self.__credentials = None
     
+    def cancel_order(self, kind, oid):
+        return self.__get_json("cancelOrder.php", params = {
+            u"oid": oid,
+            u"type": kind
+        })[u"orders"]
+    
     def get_balance(self):
         return self.__get_json("getFunds.php")
     
@@ -202,20 +208,46 @@ class GoxSh(object):
             return self.__get_cmds(text)[state] + (" " if len(cmds) == 1 else "")
         except IndexError:
             return None
+    
+    def __print_balance(self, balance):
+        print u"BTC:", balance[u"btcs"]
+        print u"USD:", balance[u"usds"]
+    
+    def __print_order(self, order):
+        kind = {1: u"sell", 2: u"buy"}[order[u"type"]]
+        timestamp = datetime.fromtimestamp(int(order[u"date"])).strftime("%Y-%m-%d %H:%M:%S")
+        properties = []
+        if bool(int(order[u"dark"])):
+            properties.append(u"dark")
+        if order[u"status"] == u"2":
+            properties.append(u"not enough funds")
+        print "[%s] %s %s: %sBTC @ %sUSD%s" % (timestamp, kind, order[u"oid"], order[u"amount"], order[u"price"], (" (" + ", ".join(properties) + ")" if properties else ""))
         
     def __unknown(self, cmd):
         def __unknown_1(*args):
-            print u"%s: unknown command" % cmd
+            print u"%s: Unknown command." % cmd
         return __unknown_1
     
     def __cmd_balance__(self):
         u"Display account balance."
-        balance = self.__mtgox.get_balance()
-        print u"BTC:", balance[u"btcs"]
-        print u"USD:", balance[u"usds"]
+        self.__print_balance(self.__mtgox.get_balance())
+    
+    def __cmd_cancel__(self, kind, order_id):
+        u"Cancel the order with the specified kind (buy or sell) and order ID."
+        try:
+            num_kind = {u"sell": 1, u"buy": 2}[kind]
+            orders = self.__mtgox.cancel_order(num_kind, order_id)
+            print u"Canceled %s %s." % (kind, order_id)
+            if orders:
+                for order in orders:
+                    self.__print_order(order)
+            else:
+                print u"No remaining orders."
+        except KeyError:
+            raise CommandError(u"%s: Invalid order kind." % kind)
     
     def __cmd_exit__(self):
-        u"""Exit goxsh."""
+        u"Exit goxsh."
         raise EOFError()
     
     def __cmd_help__(self, command = None):
@@ -243,17 +275,18 @@ class GoxSh(object):
     
     def __cmd_orders__(self, kind = None):
         u"List open orders.\nSpecifying a kind (buy or sell) will list only orders of that kind."
-        if kind not in {None, u"buy", u"sell"}:
-            raise CommandError("%s: invalid order kind" % kind)
-        orders = self.__mtgox.get_orders()
-        for order in orders:
-            order_kind = {1: u"sell", 2: u"buy"}[order[u"type"]]
-            if kind in {None, order_kind}:
-                timestamp = datetime.fromtimestamp(int(order[u"date"])).strftime("%Y-%m-%d %H:%M:%S")
-                status = {u"1": u"active", u"2": "not enough funds"}[order[u"status"]]
-                dark = bool(int(order[u"dark"]))
-                print "%s [%s] %s %sBTC @ %sUSD (%s%s)" % (order[u"oid"], timestamp, order_kind, order[u"amount"], order[u"price"], u"dark, " if not dark else "", status)
-    
+        try:
+            num_kind = {None: None, u"sell": 1, u"buy": 2}[kind]
+            orders = self.__mtgox.get_orders()
+            if orders:
+                for order in orders:
+                    if num_kind in {None, order[u"type"]}:
+                        self.__print_order(order)
+            else:
+                print "No orders."
+        except KeyError:
+            raise CommandError(u"%s: Invalid order kind." % kind)
+                
     def __cmd_ticker__(self):
         u"Display ticker."
         ticker = self.__mtgox.get_ticker()
@@ -269,8 +302,7 @@ class GoxSh(object):
         withdraw_info = self.__mtgox.withdraw(address, amount)
         print withdraw_info[u"status"]
         print "Updated balance:"
-        print "BTC: %s" % withdraw_info[u"btcs"]
-        print "USD: %s" % withdraw_info[u"usds"]
+        self.__print_balance(withdraw_info)
 
 def main():
     locale.setlocale(locale.LC_ALL, "")
