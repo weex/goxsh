@@ -154,6 +154,10 @@ class GoxSh(object):
     def __unknown(self, cmd, *args):
         print u"%s: unknown command" % cmd
     
+    def __cmd_balance__(self):
+        u"""Display account balance."""
+        print self.__mtgox.get_balance()
+    
     def __cmd_exit__(self):
         u"""Exit goxsh."""
         raise EOFError()
@@ -180,7 +184,6 @@ class GoxSh(object):
     def __cmd_logout__(self):
         u"""Unset login credentials."""
         self.__mtgox.unset_credentials()
-    
 
 def main():
     locale.setlocale(locale.LC_ALL, "")
