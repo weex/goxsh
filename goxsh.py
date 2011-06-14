@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 from contextlib import closing
 from datetime import datetime
-from functools import partial
 import getpass
 import inspect
 import json
@@ -282,11 +282,12 @@ class GoxSh(object):
     
     def __cmd_login__(self, username = u""):
         u"Set login credentials."
-        while len(username) == 0:
-            username = raw_input("Username: ").decode(self.__encoding)
-        readline.remove_history_item(readline.get_current_history_length() - 1)
+        if not username:
+            while not username:
+                username = raw_input("Username: ").decode(self.__encoding)
+            readline.remove_history_item(readline.get_current_history_length() - 1)
         password = u""
-        while len(password) == 0:
+        while not password:
             password = getpass.getpass()
         self.__mtgox.set_credentials(username, password)
     
