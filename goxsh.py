@@ -339,6 +339,7 @@ def main():
     encoding = locale.getpreferredencoding()
     sh = GoxSh(MtGox(), encoding)
     print u"Welcome to goxsh!"
+    print u"Type 'help' to get started."
     try:
         while True:
             sh.prompt()
