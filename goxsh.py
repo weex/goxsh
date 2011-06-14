@@ -50,6 +50,13 @@ class MtGox(object):
     def get_ticker(self):
         return self.__get_json("data/ticker.php", auth = False)[u"ticker"]
     
+    def withdraw(self, address, amount):
+        return self.__get_json("withdraw.php", params = {
+            u"group1": u"BTC",
+            u"btca": address,
+            u"amount": amount
+        })    
+
     def __get_json(self, rel_path, params = {}, auth = True):
         if auth and not self.have_credentials():
             raise NoCredentialsError()
@@ -232,7 +239,10 @@ class GoxSh(object):
         print u"Hight:", ticker[u"high"]
         print u"Low:", ticker[u"low"]
         print u"Volume:", ticker[u"vol"]
-    
+
+    def __cmd_withdraw__(self, address, amount):
+        u"""Withdraw bitcoins."""
+        print self.__mtgox.withdraw(address, amount)    
 
 def main():
     locale.setlocale(locale.LC_ALL, "")
