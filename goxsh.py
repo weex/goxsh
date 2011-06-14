@@ -45,6 +45,12 @@ class MtGox(object):
     def unset_credentials(self):
         self.__credentials = None
     
+    def buy(self, amount, price):
+        return self.__get_json("buyBTC.php", params = {
+            u"amount": amount,
+            u"price": price
+        })
+    
     def cancel_order(self, kind, oid):
         return self.__get_json("cancelOrder.php", params = {
             u"oid": oid,
@@ -59,6 +65,12 @@ class MtGox(object):
     
     def get_ticker(self):
         return self.__get_json("data/ticker.php", auth = False)[u"ticker"]
+    
+    def sell(self, amount, price):
+        return self.__get_json("sellBTC.php", params = {
+            u"amount": amount,
+            u"price": price
+        })
     
     def withdraw(self, address, amount):
         return self.__get_json("withdraw.php", params = {
@@ -232,6 +244,15 @@ class GoxSh(object):
         u"Display account balance."
         self.__print_balance(self.__mtgox.get_balance())
     
+    def __cmd_buy__(self, amount, price):
+        u"Buy bitcoins."
+        buy_result = self.__mtgox.buy(amount, price)
+        statuses = filter(None, buy_result[u"status"].split(u"<br>"))
+        for status in statuses:
+            print status
+        for order in buy_result[u"orders"]:
+            self.__print_order(order)
+    
     def __cmd_cancel__(self, kind, order_id):
         u"Cancel the order with the specified kind (buy or sell) and order ID."
         try:
@@ -287,6 +308,15 @@ class GoxSh(object):
         except KeyError:
             raise CommandError(u"%s: Invalid order kind." % kind)
                 
+    def __cmd_sell__(self, amount, price):
+        u"Sell bitcoins."
+        sell_result = self.__mtgox.sell(amount, price)
+        statuses = filter(None, sell_result[u"status"].split(u"<br>"))
+        for status in statuses:
+            print status
+        for order in sell_result[u"orders"]:
+            self.__print_order(order)
+
     def __cmd_ticker__(self):
         u"Display ticker."
         ticker = self.__mtgox.get_ticker()
