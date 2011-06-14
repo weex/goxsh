@@ -1,4 +1,5 @@
 from contextlib import closing
+from datetime import datetime
 from functools import partial
 import getpass
 import inspect
@@ -47,6 +48,9 @@ class MtGox(object):
     def get_balance(self):
         return self.__get_json("getFunds.php")
     
+    def get_orders(self):
+        return self.__get_json("getOrders.php")[u"orders"]
+    
     def get_ticker(self):
         return self.__get_json("data/ticker.php", auth = False)[u"ticker"]
     
@@ -84,6 +88,9 @@ class MtGox(object):
                 raise MtGoxError(data[u"error"])
         else:
             return data
+
+class CommandError(Exception):
+    pass
 
 class ArityError(Exception):
     pass
@@ -126,6 +133,8 @@ class GoxSh(object):
             print u"Mt. Gox error: %s" % e
         except EOFError, e:
             raise e
+        except CommandError, e:
+            print e
         except ArityError, e:
             print e
         except NoCredentialsError:
@@ -200,7 +209,7 @@ class GoxSh(object):
         return __unknown_1
     
     def __cmd_balance__(self):
-        u"""Display account balance."""
+        u"Display account balance."
         balance = self.__mtgox.get_balance()
         print u"BTC:", balance[u"btcs"]
         print u"USD:", balance[u"usds"]
@@ -210,7 +219,7 @@ class GoxSh(object):
         raise EOFError()
     
     def __cmd_help__(self, command = None):
-        u"""Show help for the specified command or list all commands if none is given."""
+        u"Show help for the specified command or list all commands if none is given."
         if command == None:
             cmds = self.__get_cmds()
         else:
@@ -219,7 +228,7 @@ class GoxSh(object):
             self.__print_cmd_info(cmd)
     
     def __cmd_login__(self, username = u""):
-        u"""Set login credentials."""
+        u"Set login credentials."
         while len(username) == 0:
             username = raw_input("Username: ").decode(self.__encoding)
         readline.remove_history_item(readline.get_current_history_length() - 1)
@@ -229,11 +238,24 @@ class GoxSh(object):
         self.__mtgox.set_credentials(username, password)
     
     def __cmd_logout__(self):
-        u"""Unset login credentials."""
+        u"Unset login credentials."
         self.__mtgox.unset_credentials()
     
+    def __cmd_orders__(self, kind = None):
+        u"List open orders.\nSpecifying a kind (buy or sell) will list only orders of that kind."
+        if kind not in {None, u"buy", u"sell"}:
+            raise CommandError("%s: invalid order kind" % kind)
+        orders = self.__mtgox.get_orders()
+        for order in orders:
+            order_kind = {1: u"sell", 2: u"buy"}[order[u"type"]]
+            if kind in {None, order_kind}:
+                timestamp = datetime.fromtimestamp(int(order[u"date"])).strftime("%Y-%m-%d %H:%M:%S")
+                status = {u"1": u"active", u"2": "not enough funds"}[order[u"status"]]
+                dark = bool(int(order[u"dark"]))
+                print "%s [%s] %s %sBTC @ %sUSD (%s%s)" % (order[u"oid"], timestamp, order_kind, order[u"amount"], order[u"price"], u"dark, " if not dark else "", status)
+    
     def __cmd_ticker__(self):
-        u"""Display ticker."""
+        u"Display ticker."
         ticker = self.__mtgox.get_ticker()
         print u"Last: %s" % ticker[u"last"]
         print u"Buy: %s" % ticker[u"buy"]
@@ -243,7 +265,7 @@ class GoxSh(object):
         print u"Volume: %s" % ticker[u"vol"]
 
     def __cmd_withdraw__(self, address, amount):
-        u"""Withdraw bitcoins."""
+        u"Withdraw bitcoins."
         withdraw_info = self.__mtgox.withdraw(address, amount)
         print withdraw_info[u"status"]
         print "Updated balance:"
