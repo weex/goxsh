@@ -78,6 +78,9 @@ class MtGox(object):
         else:
             return data
 
+class ArityError(Exception):
+    pass
+
 class GoxSh(object):
     def __init__(self, mtgox, encoding):
         self.__mtgox = mtgox
@@ -87,23 +90,35 @@ class GoxSh(object):
     
     def prompt(self):
         proc = None
+        args = []
         try:
             try:
                 text = u"%s$ " % (self.__mtgox.get_username() or u"")
                 line = raw_input(text).decode(self.__encoding).split()
                 if line:
                     cmd, args = line[0], line[1:]
-                    proc = partial(
-                        self.__get_cmd_proc(cmd, partial(self.__unknown, cmd)),
-                        *args
-                    )
+                    proc = self.__get_cmd_proc(cmd, self.__unknown(cmd))
             except EOFError, e:
                 print "exit"
                 proc = self.__cmd_exit__
             if proc != None:
-                proc()
+                (min_arity, max_arity) = self.__get_proc_arity(proc)
+                arg_count = len(args)
+                if min_arity <= arg_count and (max_arity == None or arg_count <= max_arity):
+                    proc(*args)
+                else:
+                    if min_arity == max_arity:
+                        arity_text = unicode(min_arity)
+                    elif max_arity == None:
+                        arity_text = u"%s+" % min_arity
+                    else:
+                        arity_text = u"%s-%s" % (min_arity, max_arity)
+                    arg_text = u"argument" + (u"" if arity_text == u"1" else u"s")
+                    raise ArityError(u"Expected %s %s, got %s" % (arity_text, arg_text, arg_count))
         except EOFError, e:
             raise e
+        except ArityError, e:
+            print e
         except NoCredentialsError:
             print u"No login credentials entered. Use the login command first."
         except LoginError:
@@ -146,6 +161,8 @@ class GoxSh(object):
                     print "[%s=%s]" % arg,
                 else:
                     print "[%s]" % arg[0],
+            if argspec.varargs != None:
+                print "[...]",
             print
             doc = proc.__doc__ or "--"
             for line in doc.splitlines():
@@ -157,6 +174,8 @@ class GoxSh(object):
         argspec = inspect.getargspec(proc)
         maximum = len(argspec.args[1:])
         minimum = maximum - (len(argspec.defaults) if argspec.defaults != None else 0)
+        if argspec.varargs != None:
+            maximum = None
         return (minimum, maximum)
     
     def __complete(self, text, state):
@@ -166,8 +185,10 @@ class GoxSh(object):
         except IndexError:
             return None
         
-    def __unknown(self, cmd, *args):
-        print u"%s: unknown command" % cmd
+    def __unknown(self, cmd):
+        def __unknown_1(*args):
+            print u"%s: unknown command" % cmd
+        return __unknown_1
     
     def __cmd_balance__(self):
         u"""Display account balance."""
