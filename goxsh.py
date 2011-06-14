@@ -160,7 +160,9 @@ class GoxSh(object):
     
     def __cmd_balance__(self):
         u"""Display account balance."""
-        print self.__mtgox.get_balance()
+        balance = self.__mtgox.get_balance()
+        print u"BTC:", balance[u"btcs"]
+        print u"USD:", balance[u"usds"]
     
     def __cmd_exit__(self):
         u"""Exit goxsh."""
