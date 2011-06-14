@@ -95,6 +95,8 @@ class GoxSh(object):
                 proc = self.__cmd_exit__
             if proc != None:
                 proc()
+        except NoCredentialsError:
+            print u"No login credentials entered. Use the login command first."
         except KeyboardInterrupt:
             print
     
