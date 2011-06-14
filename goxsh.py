@@ -91,8 +91,8 @@ class GoxSh(object):
             try:
                 text = u"%s$ " % (self.__mtgox.get_username() or u"")
                 line = raw_input(text).decode(self.__encoding).split()
-                cmd, args = line[0], line[1:]
-                if len(cmd) > 0:
+                if line:
+                    cmd, args = line[0], line[1:]
                     proc = partial(
                         self.__get_cmd_proc(cmd, partial(self.__unknown, cmd)),
                         *args
