@@ -97,6 +97,8 @@ class GoxSh(object):
                 proc()
         except NoCredentialsError:
             print u"No login credentials entered. Use the login command first."
+        except LoginError:
+            print u"Mt. Gox rejected the login credentials. Maybe you made a typo?"
         except KeyboardInterrupt:
             print
     
