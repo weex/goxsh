@@ -8,7 +8,7 @@ Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
 - Specify buy/sell amounts in BTC or USD
 - List and cancel orders
 - Withdraw bitcoins
-- Interactive authentication with no-echo password prompt - no need to store your credentials on disk
+- Interactive authentication with no-echo password prompt — no need to store your credentials on disk
 - Display account balance
 - Display ticker
 - Tab completion of commands
