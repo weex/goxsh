@@ -134,7 +134,7 @@ class GoxSh(object):
                     cmd, args = line[0], line[1:]
                     proc = self.__get_cmd_proc(cmd, self.__unknown(cmd))
             except EOFError, e:
-                print "exit"
+                print u"exit"
                 proc = self.__cmd_exit__
             if proc != None:
                 (min_arity, max_arity) = self.__get_proc_arity(proc)
@@ -197,13 +197,13 @@ class GoxSh(object):
                 if not isinstance(arg, tuple):
                     print arg,
                 elif arg[1]:
-                    print "[%s=%s]" % arg,
+                    print u"[%s=%s]" % arg,
                 else:
-                    print "[%s]" % arg[0],
+                    print u"[%s]" % arg[0],
             if argspec.varargs != None:
-                print "[...]",
+                print u"[...]",
             print
-            doc = proc.__doc__ or "--"
+            doc = proc.__doc__ or u"--"
             for line in doc.splitlines():
                 print "    " + line
         else:
@@ -296,7 +296,7 @@ class GoxSh(object):
         u"Set login credentials."
         if not username:
             while not username:
-                username = raw_input("Username: ").decode(self.__encoding)
+                username = raw_input(u"Username: ").decode(self.__encoding)
             readline.remove_history_item(readline.get_current_history_length() - 1)
         password = u""
         while not password:
@@ -317,7 +317,7 @@ class GoxSh(object):
                     if num_kind in {None, order[u"type"]}:
                         self.__print_order(order)
             else:
-                print "No orders."
+                print u"No orders."
         except KeyError:
             raise CommandError(u"%s: Invalid order kind." % kind)
                 
@@ -339,7 +339,7 @@ class GoxSh(object):
         u"Withdraw bitcoins."
         withdraw_info = self.__mtgox.withdraw(address, amount)
         print withdraw_info[u"status"]
-        print "Updated balance:"
+        print u"Updated balance:"
         self.__print_balance(withdraw_info)
 
 def main():
