@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from contextlib import closing
 from datetime import datetime
+from decimal import *
 import getpass
 import inspect
 import json
@@ -119,6 +120,8 @@ class GoxSh(object):
         self.__encoding = encoding
         readline.parse_and_bind("tab: complete")
         readline.set_completer(self.__complete)
+        self.__btc_precision = Decimal("0.00000001")
+        self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
     
     def prompt(self):
         proc = None
@@ -221,6 +224,20 @@ class GoxSh(object):
         except IndexError:
             return None
     
+    def __exchange(self, proc, amount, price):
+        match = self.__usd_re.match(amount)
+        if match:
+            usd_amount = Decimal(match.group(1))
+            btc_amount = str((usd_amount / Decimal(price)).quantize(self.__btc_precision))
+        else:
+            btc_amount = amount
+        ex_result = proc(btc_amount, price)
+        statuses = filter(None, ex_result[u"status"].split(u"<br>"))
+        for status in statuses:
+            print status
+        for order in ex_result[u"orders"]:
+            self.__print_order(order)
+    
     def __print_balance(self, balance):
         print u"BTC:", balance[u"btcs"]
         print u"USD:", balance[u"usds"]
@@ -245,13 +262,8 @@ class GoxSh(object):
         self.__print_balance(self.__mtgox.get_balance())
     
     def __cmd_buy__(self, amount, price):
-        u"Buy bitcoins."
-        buy_result = self.__mtgox.buy(amount, price)
-        statuses = filter(None, buy_result[u"status"].split(u"<br>"))
-        for status in statuses:
-            print status
-        for order in buy_result[u"orders"]:
-            self.__print_order(order)
+        u"Buy bitcoins.\nPrefix the amount with a '$' to spend that many USD and calculate BTC amount\nautomatically."
+        self.__exchange(self.__mtgox.buy, amount, price)
     
     def __cmd_cancel__(self, kind, order_id):
         u"Cancel the order with the specified kind (buy or sell) and order ID."
@@ -310,13 +322,8 @@ class GoxSh(object):
             raise CommandError(u"%s: Invalid order kind." % kind)
                 
     def __cmd_sell__(self, amount, price):
-        u"Sell bitcoins."
-        sell_result = self.__mtgox.sell(amount, price)
-        statuses = filter(None, sell_result[u"status"].split(u"<br>"))
-        for status in statuses:
-            print status
-        for order in sell_result[u"orders"]:
-            self.__print_order(order)
+        u"Sell bitcoins.\nPrefix the amount with a '$' to receive that many USD and calculate BTC\namount automatically."
+        self.__exchange(self.__mtgox.sell, amount, price)
 
     def __cmd_ticker__(self):
         u"Display ticker."
