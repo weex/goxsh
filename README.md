@@ -16,7 +16,7 @@ Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
 
 ## Requirements
 
-[Python](http://python.org/) 2.7 or a newer 2.* release.
+[Python](http://python.org/) 2.6 or a newer 2.* release.
 
 ## Usage
 

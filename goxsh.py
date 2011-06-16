@@ -314,7 +314,7 @@ class GoxSh(object):
             orders = self.__mtgox.get_orders()
             if orders:
                 for order in orders:
-                    if num_kind in {None, order[u"type"]}:
+                    if num_kind in (None, order[u"type"]):
                         self.__print_order(order)
             else:
                 print u"No orders."
