@@ -11,6 +11,7 @@ Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
 - Interactive authentication with no-echo password prompt — no need to store your credentials on disk
 - Display account balance
 - Display ticker
+- Calculate profitable short/long prices from an initial price
 - Tab completion of commands
 - Abort commands with SIGINT (ctrl-c on *nix) without exiting, if Mt. Gox is being slow
 
