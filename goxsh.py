@@ -23,11 +23,11 @@ class LoginError(Exception):
     pass
 
 class MtGox(object):    
-    def __init__(self):
+    def __init__(self, user_agent):
         self.unset_credentials()
         self.__url_parts = urlparse.urlsplit("https://mtgox.com/code/")
         self.__headers = {
-            "User-Agent": u"goxsh"
+            "User-Agent": user_agent
         }
     
     def get_username(self):
@@ -345,7 +345,7 @@ class GoxSh(object):
 def main():
     locale.setlocale(locale.LC_ALL, "")
     encoding = locale.getpreferredencoding()
-    sh = GoxSh(MtGox(), encoding)
+    sh = GoxSh(MtGox(u"goxsh"), encoding)
     print u"Welcome to goxsh!"
     print u"Type 'help' to get started."
     try:
