@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from contextlib import closing
 from datetime import datetime
-from decimal import *
+from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_UP
 import getpass
 import inspect
 import json
@@ -121,7 +121,9 @@ class GoxSh(object):
         readline.parse_and_bind("tab: complete")
         readline.set_completer(self.__complete)
         self.__btc_precision = Decimal("0.00000001")
+        self.__usd_precision = Decimal("0.00001")
         self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
+        self.__mtgox_commission = Decimal("0.0065")
     
     def prompt(self):
         proc = None
@@ -320,7 +322,19 @@ class GoxSh(object):
                 print u"No orders."
         except KeyError:
             raise CommandError(u"%s: Invalid order kind." % kind)
-                
+    
+    def __cmd_profit__(self, price):
+        u"Calculate profitable short/long prices for a given initial price, taking\ninto account Mt. Gox's 0.65% commission fee."
+        try:
+            dec_price = Decimal(price)
+            if dec_price < 0:
+                raise CommandError(u"%s: Invalid price." % price)
+            min_profitable_ratio = (1 - self.__mtgox_commission)**(-2)
+            print u"Short: < %s" % (dec_price / min_profitable_ratio).quantize(self.__usd_precision, ROUND_DOWN)
+            print u"Long: > %s" % (dec_price * min_profitable_ratio).quantize(self.__usd_precision, ROUND_UP)
+        except InvalidOperation:
+            raise CommandError(u"%s: Invalid price." % price)
+    
     def __cmd_sell__(self, amount, price):
         u"Sell bitcoins.\nPrefix the amount with a '$' to receive that many USD and calculate BTC\namount automatically."
         self.__exchange(self.__mtgox.sell, amount, price)
