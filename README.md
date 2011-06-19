@@ -1,14 +1,15 @@
 # goxsh
 
-Mt. Gox Shell — a command-line frontend to the Mt. Gox Bitcoin Exchange
+goxsh — a command-line frontend to the Mt. Gox Bitcoin Exchange with support for Exchange Bitcoins.
 
 ## Features
 
 - Buy and sell bitcoins
 - Specify buy/sell amounts in BTC or USD
 - List and cancel orders
-- Withdraw bitcoins
+- Withdraw bitcoins (Mt. Gox only)
 - Interactive authentication with no-echo password prompt — no need to store your credentials on disk
+- Login to one of two exchanges (login user@mtgox or login user@exchb)
 - Display account balance
 - Display ticker
 - Calculate profitable short/long prices from an initial price
