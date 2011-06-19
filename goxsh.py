@@ -26,21 +26,25 @@ class MtGox(object):
     def __init__(self, user_agent):
         self.unset_credentials()
 
-	self.server = "mtgox.com"
-	self.__exchangename = "Mt. Gox"
-	self.__promptserver = "mtgox"
-	self.__commission = Decimal("0.0065")
-
-	# uncomment to switch to use Exchange Bitcoins
-	self.server = "www.exchangebitcoins.com"
-        
-	self.__url_parts = urlparse.urlsplit("https://"+self.server)
         self.__headers = {
             "User-Agent": user_agent
         }
 
-	# MtGox actions
-        self.actions = {"_get_ticker": "/code/data/ticker.php",
+    def get_username(self):
+        return self.__credentials[1] if self.have_credentials() else None
+    
+    def have_credentials(self):
+        return self.__credentials != None
+        
+    def set_credentials(self, exchange, username, password):
+        if len(exchange) == 0 or exchange == "mtgox":
+            exchange = "mtgox" 
+	    self.server = "mtgox.com"
+	    self.__exchangename = "Mt. Gox"
+	    self.__promptserver = "mtgox"
+	    self.__commission = Decimal("0.0065")
+	    self.__url_parts = urlparse.urlsplit("https://"+self.server)
+            self.actions = {"_get_ticker": "/code/data/ticker.php",
                         "get_depth": "/code/data/getDepth.php",
                         "get_trades": "/code/data/getTrades.php",
                         "get_balance": "/code/getFunds.php",
@@ -49,13 +53,13 @@ class MtGox(object):
                         "_get_orders": "/code/getOrders.php",
                         "_cancel_order": "/code/cancelOrder.php",
                         "_withdraw": "/code/withdraw.php"}
-
-	# ExchangeBitcoins actions
-        if self.server == "www.exchangebitcoins.com" :
-		self.__exchangename = "Exchange Bitcoins"
-		self.__promptserver = "exchb"
-		self.__commission = Decimal("0.0029")
-		self.actions = {"_get_ticker": "/data/ticker",
+	if exchange == "exchb":
+	    self.server = "www.exchangebitcoins.com"
+	    self.__exchangename = "Exchange Bitcoins"
+	    self.__promptserver = "exchb"
+	    self.__commission = Decimal("0.0029")
+	    self.__url_parts = urlparse.urlsplit("https://"+self.server)
+	    self.actions = {"_get_ticker": "/data/ticker",
                 	        "get_depth": "/data/depth",
                        		"get_trades": "/data/recent",
                        	 	"get_balance": "/data/getFunds",
@@ -63,23 +67,16 @@ class MtGox(object):
                         	"sell_btc": "/data/sellBTC",
                         	"_get_orders": "/data/getOrders",
                         	"_cancel_order": "/data/cancelOrder"}
-
-    def get_username(self):
-        return self.__credentials[1] if self.have_credentials() else None
-    
-    def have_credentials(self):
-        return self.__credentials != None
-        
-    def set_credentials(self, server, username, password):
-        if len(server) == 0:
-            server = "mtgox" 
+            
         if len(username) == 0:
             raise ValueError(u"Empty username.")
         if len(password) == 0:
             raise ValueError(u"Empty password.")
-        self.__credentials = (server, username, password)
+
+        self.__credentials = (exchange, username, password)
 
     def unset_credentials(self):
+	self.server = "mtgox.com"
         self.__credentials = None
 
     def get_servername(self):
@@ -168,7 +165,7 @@ class GoxSh(object):
         self.__btc_precision = Decimal("0.00000001")
         self.__usd_precision = Decimal("0.00001")
         self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
-        self.__mtgox_commission = mtgox.get_commission()
+        #self.__mtgox_commission = mtgox.get_commission()
     
     def prompt(self):
         proc = None
@@ -176,7 +173,7 @@ class GoxSh(object):
         try:
             try:
                 text = u"%s%s$ " % (self.__mtgox.get_username() or u"", self.__mtgox.get_servername() or u"")
-                line = raw_input(text).decode(self.__encoding).split()
+                line = raw_input(text).decode(self.__encoding).replace("@"," ").split()
                 if line:
                     cmd, args = line[0], line[1:]
                     proc = self.__get_cmd_proc(cmd, self.__unknown(cmd))
@@ -290,7 +287,7 @@ class GoxSh(object):
         print u"USD:", balance[u"usds"]
     
     def __print_order(self, order):
-	kind = {1: u"sell", 2: u"buy", u"Sell": 1, u"Buy": 2}[order[u"type"]]
+	kind = {1: u"sell", 2: u"buy", u"Sell": u"sell", u"Buy": u"buy"}[order[u"type"]]
         timestamp = datetime.fromtimestamp(int(order[u"date"])).strftime("%Y-%m-%d %H:%M:%S")
         properties = []
         if u"dark" in order and bool(int(order[u"dark"])):
@@ -339,10 +336,8 @@ class GoxSh(object):
         for cmd in cmds:
             self.__print_cmd_info(cmd)
     
-    def __cmd_login__(self, username = u"", server = u""):
-        u"Set login credentials."
-	if not server:
-            server = "mtgox"
+    def __cmd_login__(self, username = u"", exchange = u"mtgox"):
+        u"Set login credentials. Exchange can be either mtgox or exchb."
         if not username:
             while not username:
                 username = raw_input(u"Username: ").decode(self.__encoding)
@@ -350,7 +345,8 @@ class GoxSh(object):
         password = u""
         while not password:
             password = getpass.getpass()
-        self.__mtgox.set_credentials(server, username, password)
+        self.__mtgox.set_credentials(exchange, username, password)
+        self.__mtgox_commission = self.__mtgox.get_commission()
     
     def __cmd_logout__(self):
         u"Unset login credentials."
@@ -372,6 +368,8 @@ class GoxSh(object):
     
     def __cmd_profit__(self, price):
         u"Calculate profitable short/long prices for a given initial price, taking\ninto account the exchange's commission fee."
+        if not self.__mtgox.have_credentials():
+            raise CommandError(u"You must login to an exchange first.")
         try:
             dec_price = Decimal(price)
             if dec_price < 0:
