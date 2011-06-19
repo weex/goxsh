@@ -25,56 +25,101 @@ class LoginError(Exception):
 class MtGox(object):    
     def __init__(self, user_agent):
         self.unset_credentials()
-        self.__url_parts = urlparse.urlsplit("https://mtgox.com/code/")
+
+	self.server = "mtgox.com"
+	self.__exchangename = "Mt. Gox"
+	self.__promptserver = "mtgox"
+	self.__commission = Decimal("0.0065")
+
+	# uncomment to switch to use Exchange Bitcoins
+	self.server = "www.exchangebitcoins.com"
+        
+	self.__url_parts = urlparse.urlsplit("https://"+self.server)
         self.__headers = {
             "User-Agent": user_agent
         }
-    
+
+	# MtGox actions
+        self.actions = {"_get_ticker": "/code/data/ticker.php",
+                        "get_depth": "/code/data/getDepth.php",
+                        "get_trades": "/code/data/getTrades.php",
+                        "get_balance": "/code/getFunds.php",
+                        "buy_btc": "/code/buyBTC.php",
+                        "sell_btc": "/code/sellBTC.php",
+                        "_get_orders": "/code/getOrders.php",
+                        "_cancel_order": "/code/cancelOrder.php",
+                        "_withdraw": "/code/withdraw.php"}
+
+	# ExchangeBitcoins actions
+        if self.server == "www.exchangebitcoins.com" :
+		self.__exchangename = "Exchange Bitcoins"
+		self.__promptserver = "exchb"
+		self.__commission = Decimal("0.0029")
+		self.actions = {"_get_ticker": "/data/ticker",
+                	        "get_depth": "/data/depth",
+                       		"get_trades": "/data/recent",
+                       	 	"get_balance": "/data/getFunds",
+                        	"buy_btc": "/data/buyBTC",
+                        	"sell_btc": "/data/sellBTC",
+                        	"_get_orders": "/data/getOrders",
+                        	"_cancel_order": "/data/cancelOrder"}
+
     def get_username(self):
-        return self.__credentials[0] if self.have_credentials() else None
+        return self.__credentials[1] if self.have_credentials() else None
     
     def have_credentials(self):
         return self.__credentials != None
         
-    def set_credentials(self, username, password):
+    def set_credentials(self, server, username, password):
+        if len(server) == 0:
+            server = "mtgox" 
         if len(username) == 0:
             raise ValueError(u"Empty username.")
         if len(password) == 0:
             raise ValueError(u"Empty password.")
-        self.__credentials = (username, password)
+        self.__credentials = (server, username, password)
 
     def unset_credentials(self):
         self.__credentials = None
-    
+
+    def get_servername(self):
+        return "@" + self.__promptserver if self.have_credentials() else None
+       
+    def get_exchangename(self):
+        return self.__exchangename
+
+    def get_commission(self):
+        return self.__commission
+
     def buy(self, amount, price):
-        return self.__get_json("buyBTC.php", params = {
+        return self.__get_json(self.actions["buy_btc"], params = {
             u"amount": amount,
             u"price": price
         })
-    
+
     def cancel_order(self, kind, oid):
-        return self.__get_json("cancelOrder.php", params = {
+        return self.__get_json(self.actions["_cancel_order"], params = {
             u"oid": oid,
             u"type": kind
         })[u"orders"]
     
     def get_balance(self):
-        return self.__get_json("getFunds.php")
+        return self.__get_json(self.actions["get_balance"])
     
     def get_orders(self):
-        return self.__get_json("getOrders.php")[u"orders"]
+        return self.__get_json(self.actions["_get_orders"])[u"orders"]
     
     def get_ticker(self):
-        return self.__get_json("data/ticker.php", auth = False)[u"ticker"]
+        return self.__get_json(self.actions["_get_ticker"], auth = False)[u"ticker"]
     
     def sell(self, amount, price):
-        return self.__get_json("sellBTC.php", params = {
+        return self.__get_json(self.actions["sell_btc"], params = {
             u"amount": amount,
             u"price": price
         })
     
     def withdraw(self, address, amount):
-        return self.__get_json("withdraw.php", params = {
+        return self.__get_json(self.actions["_withdraw"], params = {
             u"group1": u"BTC",
             u"btca": address,
             u"amount": amount
@@ -86,8 +131,8 @@ class MtGox(object):
         params = params.items()
         if auth:
             params += [
-                (u"name", self.__credentials[0]),
-                (u"pass", self.__credentials[1])
+                (u"name", self.__credentials[1]),
+                (u"pass", self.__credentials[2])
             ]
         post_data = urllib.urlencode(params) if len(params) > 0 else None
         url = urlparse.urlunsplit((
@@ -123,14 +168,14 @@ class GoxSh(object):
         self.__btc_precision = Decimal("0.00000001")
         self.__usd_precision = Decimal("0.00001")
         self.__usd_re = re.compile(r"^\$(\d*\.?\d+)$")
-        self.__mtgox_commission = Decimal("0.0065")
+        self.__mtgox_commission = mtgox.get_commission()
     
     def prompt(self):
         proc = None
         args = []
         try:
             try:
-                text = u"%s$ " % (self.__mtgox.get_username() or u"")
+                text = u"%s%s$ " % (self.__mtgox.get_username() or u"", self.__mtgox.get_servername() or u"")
                 line = raw_input(text).decode(self.__encoding).split()
                 if line:
                     cmd, args = line[0], line[1:]
@@ -153,7 +198,7 @@ class GoxSh(object):
                     arg_text = u"argument" + (u"" if arity_text == u"1" else u"s")
                     raise ArityError(u"Expected %s %s, got %s" % (arity_text, arg_text, arg_count))
         except MtGoxError, e:
-            print u"Mt. Gox error: %s" % e
+            print "%s error: %s" % (e, self_mtgox.get_exchangename())
         except EOFError, e:
             raise e
         except CommandError, e:
@@ -163,7 +208,7 @@ class GoxSh(object):
         except NoCredentialsError:
             print u"No login credentials entered. Use the login command first."
         except LoginError:
-            print u"Mt. Gox rejected the login credentials. Maybe you made a typo?"
+            print u"%s rejected the login credentials. Maybe you made a typo?" % self.__mtgox.get_exchangename()
         except KeyboardInterrupt:
             print
         except Exception, e:
@@ -245,12 +290,12 @@ class GoxSh(object):
         print u"USD:", balance[u"usds"]
     
     def __print_order(self, order):
-        kind = {1: u"sell", 2: u"buy"}[order[u"type"]]
+	kind = {1: u"sell", 2: u"buy", u"Sell": 1, u"Buy": 2}[order[u"type"]]
         timestamp = datetime.fromtimestamp(int(order[u"date"])).strftime("%Y-%m-%d %H:%M:%S")
         properties = []
-        if bool(int(order[u"dark"])):
+        if u"dark" in order and bool(int(order[u"dark"])):
             properties.append(u"dark")
-        if order[u"status"] == u"2":
+        if u"status" in order and order[u"status"] == u"2":
             properties.append(u"not enough funds")
         print "[%s] %s %s: %sBTC @ %sUSD%s" % (timestamp, kind, order[u"oid"], order[u"amount"], order[u"price"], (" (" + ", ".join(properties) + ")" if properties else ""))
         
@@ -270,7 +315,7 @@ class GoxSh(object):
     def __cmd_cancel__(self, kind, order_id):
         u"Cancel the order with the specified kind (buy or sell) and order ID."
         try:
-            num_kind = {u"sell": 1, u"buy": 2}[kind]
+            num_kind = {u"sell": 1, u"buy": 2, u"Sell": 1, u"Buy": 2}[kind]
             orders = self.__mtgox.cancel_order(num_kind, order_id)
             print u"Canceled %s %s." % (kind, order_id)
             if orders:
@@ -294,8 +339,10 @@ class GoxSh(object):
         for cmd in cmds:
             self.__print_cmd_info(cmd)
     
-    def __cmd_login__(self, username = u""):
+    def __cmd_login__(self, username = u"", server = u""):
         u"Set login credentials."
+	if not server:
+            server = "mtgox"
         if not username:
             while not username:
                 username = raw_input(u"Username: ").decode(self.__encoding)
@@ -303,7 +350,7 @@ class GoxSh(object):
         password = u""
         while not password:
             password = getpass.getpass()
-        self.__mtgox.set_credentials(username, password)
+        self.__mtgox.set_credentials(server, username, password)
     
     def __cmd_logout__(self):
         u"Unset login credentials."
@@ -312,7 +359,7 @@ class GoxSh(object):
     def __cmd_orders__(self, kind = None):
         u"List open orders.\nSpecifying a kind (buy or sell) will list only orders of that kind."
         try:
-            num_kind = {None: None, u"sell": 1, u"buy": 2}[kind]
+            num_kind = {None: None, u"sell": 1, u"buy": 2, u"Sell": 1, u"Buy": 2}[kind]
             orders = self.__mtgox.get_orders()
             if orders:
                 for order in orders:
@@ -324,7 +371,7 @@ class GoxSh(object):
             raise CommandError(u"%s: Invalid order kind." % kind)
     
     def __cmd_profit__(self, price):
-        u"Calculate profitable short/long prices for a given initial price, taking\ninto account Mt. Gox's 0.65% commission fee."
+        u"Calculate profitable short/long prices for a given initial price, taking\ninto account the exchange's commission fee."
         try:
             dec_price = Decimal(price)
             if dec_price < 0:
@@ -345,7 +392,7 @@ class GoxSh(object):
         print u"Last: %s" % ticker[u"last"]
         print u"Buy: %s" % ticker[u"buy"]
         print u"Sell: %s" % ticker[u"sell"]
-        print u"Hight: %s" % ticker[u"high"]
+        print u"High: %s" % ticker[u"high"]
         print u"Low: %s" % ticker[u"low"]
         print u"Volume: %s" % ticker[u"vol"]
 
